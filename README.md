@@ -1,58 +1,56 @@
-# Weekend Empire - Milestone 2 SDL Platform Skeleton
+# Weekend Empire - Milestone 3 OpenGL Rendering Foundation
 
-Weekend Empire is a football chairman simulator project. This milestone keeps the scope intentionally small and focuses on making SDL2 the first real platform layer foundation for Linux.
-
-Milestone 1 proved a basic proof-of-life app. Milestone 2 turns that into a cleaner small skeleton that is still simple, readable, and easy to extend.
+Weekend Empire is a football chairman simulator project. This milestone keeps the Linux-first C++20 foundation small and readable while making OpenGL a deliberate rendering backend choice.
 
 ## What changed in this milestone
 
-- tightened startup flow with explicit SDL init, window creation, OpenGL context creation, and startup logs
-- improved runtime loop structure around event polling, input handling, rendering, and timing
-- added cleaner key handling for both key down and key up
-- Escape now quits reliably on key press
-- Space and F1 key state changes are logged
-- added frame timing using SDL high-resolution performance counters
-- added low-noise periodic timing log output
-- added simple pacing guard with `SDL_Delay(1)` for very short frames
-- added useful window event logs (resize and focus changes)
-- kept OpenGL use minimal (viewport + clear + swap)
+- kept SDL2 as the platform layer for windowing, input, timing, events, and OpenGL context creation
+- made OpenGL setup more explicit with clearer context attribute configuration and startup stage logs
+- added startup logging for OpenGL vendor, renderer, and version
+- kept rendering deliberately minimal: viewport + clear colour + buffer swap
+- made viewport updates explicit on resize-related window events
+- retained clean event loop, key handling, timing logs, and shutdown path
 
-## What SDL is doing for us now
+## Why OpenGL at this stage
 
-At this stage, SDL is the platform layer handling:
+This project does not need Vulkan complexity right now. OpenGL is enough to provide a reliable rendering foundation while we continue building gameplay and UI systems step by step.
 
-- platform initialization (`SDL_Init`)
-- native window creation
-- OpenGL context creation and swap interval setup
-- event queue polling
-- keyboard input events
-- window events (close, resize, focus)
-- high-resolution frame timing
-- controlled shutdown and cleanup
+Using OpenGL here gives us:
 
-This gives us a solid base to build game logic later without introducing complicated architecture early.
+- a practical, widely supported path for Linux-first development
+- simple and visible rendering behaviour that is easy to debug
+- a stable base for later milestones without introducing heavy architecture early
 
-## Current runtime behaviour
+## What this milestone proves
 
-When you run the app, expected behaviour is:
+This milestone proves the SDL2 + OpenGL baseline is now intentionally structured rather than incidental:
 
-- terminal shows startup stages
-- a `1280x720` resizable window titled `Weekend Empire` opens
-- app enters the main loop and clears the window every frame
-- periodic timing logs appear approximately once per second
-- keyboard logs include key down/up for `Escape`, `Space`, and `F1`
-- pressing `Escape` exits cleanly
-- closing the window exits cleanly
-- shutdown messages confirm cleanup path
+- startup and context creation are explicit and validated
+- OpenGL runtime details are visible in logs
+- resize handling keeps rendering valid through viewport updates
+- rendering loop remains minimal, stable, and understandable
 
-## Controls currently implemented
+## Expected runtime behaviour
 
-- `Escape`:
+When running the app:
+
+- SDL initialises successfully
+- OpenGL context is created successfully
+- terminal startup logs show OpenGL vendor, renderer, and version
+- window opens at `1280x720` and displays a clear background colour
+- resizing the window keeps rendering valid
+- `Escape` quits cleanly
+- window close event quits cleanly
+- shutdown logs confirm orderly cleanup
+
+## Controls
+
+- `Escape`
   - key down/up logged
-  - key down triggers quit
-- `Space`:
+  - key down exits application
+- `Space`
   - key down/up logged
-- `F1`:
+- `F1`
   - key down/up logged
 
 ## Dependencies (Linux, Ubuntu/Debian)
@@ -64,7 +62,7 @@ sudo apt update
 sudo apt install -y build-essential cmake libsdl2-dev libgl1-mesa-dev
 ```
 
-Optional diagnostics tools that can help debugging:
+Optional diagnostics tools:
 
 ```bash
 sudo apt install -y gdb valgrind mesa-utils
@@ -88,57 +86,52 @@ cmake --build build -j
 
 ## Run steps
 
-Run the executable:
-
 ```bash
 ./build/weekend_empire
 ```
 
-## Debugging basic failures
+## Debugging guidance for common Linux issues
 
-If configuration fails:
+### Configure/build errors
 
-- ensure `libsdl2-dev` and `libgl1-mesa-dev` are installed
-- confirm `cmake --version` works
-- confirm compiler is available (`g++ --version`)
+- verify dependencies are installed (`libsdl2-dev`, `libgl1-mesa-dev`)
+- verify toolchain availability:
 
-If window/context creation fails:
+```bash
+cmake --version
+g++ --version
+```
 
-- check terminal output for `[error]` lines
-- verify OpenGL support with:
+### Window or OpenGL context creation fails
+
+- check terminal output for `[error]` log lines
+- verify OpenGL availability from your session:
 
 ```bash
 glxinfo | head -n 20
 ```
 
-If app runs but no window appears (remote/headless setups):
+### Startup logs show unexpected renderer/version
 
-- verify an active desktop session and working display server
-- if using Wayland/X11 forwarding, confirm display environment variables are valid
+- this usually indicates a driver/environment mismatch
+- ensure GPU drivers are installed correctly for your hardware
+- on remote/virtual sessions, confirm hardware acceleration or expected software renderer behaviour
 
-If runtime behaviour seems wrong:
+### App runs but no visible window (remote/headless)
 
-- read startup/event/timing/shutdown logs in terminal
-- run under debugger:
+- confirm an active desktop session and valid display environment
+- verify your Wayland/X11 session is configured correctly
+
+### Runtime behaviour debugging
+
+Use debugger:
 
 ```bash
 gdb --args ./build/weekend_empire
 ```
 
-- run memory checks:
+Use memory checker:
 
 ```bash
 valgrind ./build/weekend_empire
 ```
-
-## What this milestone proves for the Weekend Empire foundation
-
-This milestone proves the project now has a practical, minimal platform skeleton that can support future systems safely:
-
-- deterministic startup and shutdown path
-- clear event/input loop structure
-- per-frame timing data available for future simulation updates
-- stable rendering loop with minimal OpenGL dependency
-- runtime logging that helps diagnose platform issues early
-
-It is still deliberately small and procedural, but no longer just proof-of-life. It is now a clean base for the next feature milestone.
