@@ -27,13 +27,11 @@ add_library(imgui_lib STATIC
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-    ${imgui_SOURCE_DIR}/misc/gl3w/GL/gl3w.c
 )
 
 target_include_directories(imgui_lib PUBLIC
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
-    ${imgui_SOURCE_DIR}/misc/gl3w
 )
 
 target_compile_definitions(imgui_lib PUBLIC
@@ -45,8 +43,6 @@ target_compile_options(imgui_lib PRIVATE
     -include
     SDL2/SDL_opengl.h
 )
-target_compile_definitions(imgui_lib PUBLIC IMGUI_IMPL_OPENGL_LOADER_CUSTOM GL_GLEXT_PROTOTYPES)
-target_compile_options(imgui_lib PRIVATE -include SDL2/SDL_opengl.h)
 
 target_link_libraries(imgui_lib PUBLIC SDL2::SDL2 OpenGL::GL)
 
