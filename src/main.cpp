@@ -2,10 +2,60 @@
 #include <SDL2/SDL_opengl.h>
 
 #include <iostream>
-#include <string>
+
+namespace {
+
+bool configure_sdl_gl_attributes() {
+    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3) != 0) {
+        std::cerr << "[error] Failed to set OpenGL major version: " << SDL_GetError() << std::endl;
+        return false;
+    }
+
+    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3) != 0) {
+        std::cerr << "[error] Failed to set OpenGL minor version: " << SDL_GetError() << std::endl;
+        return false;
+    }
+
+    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE) != 0) {
+        std::cerr << "[error] Failed to set OpenGL profile: " << SDL_GetError() << std::endl;
+        return false;
+    }
+
+    if (SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1) != 0) {
+        std::cerr << "[error] Failed to enable OpenGL double buffering: " << SDL_GetError() << std::endl;
+        return false;
+    }
+
+    std::cout << "[startup] SDL OpenGL attributes configured (core 3.3, double buffer)" << std::endl;
+    return true;
+}
+
+void log_gl_string(const char* label, GLenum name) {
+    const GLubyte* value = glGetString(name);
+    if (value) {
+        std::cout << "[startup] " << label << ": " << value << std::endl;
+    } else {
+        std::cout << "[warn] " << label << " unavailable" << std::endl;
+    }
+}
+
+void apply_viewport(SDL_Window* window, bool log_resize) {
+    int drawable_width = 0;
+    int drawable_height = 0;
+    SDL_GL_GetDrawableSize(window, &drawable_width, &drawable_height);
+
+    glViewport(0, 0, drawable_width, drawable_height);
+
+    if (log_resize) {
+        std::cout << "[render] Viewport set to " << drawable_width << "x" << drawable_height << std::endl;
+    }
+}
+
+}
 
 int main(int, char**) {
-    std::cout << "[startup] Weekend Empire platform bootstrap starting" << std::endl;
+    std::cout << "[startup] Weekend Empire starting" << std::endl;
+    std::cout << "[startup] Initialising SDL video/events/timer" << std::endl;
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER) != 0) {
         std::cerr << "[error] SDL_Init failed: " << SDL_GetError() << std::endl;
@@ -14,10 +64,10 @@ int main(int, char**) {
 
     std::cout << "[startup] SDL initialised" << std::endl;
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    if (!configure_sdl_gl_attributes()) {
+        SDL_Quit();
+        return 1;
+    }
 
     std::cout << "[startup] Creating SDL window" << std::endl;
     SDL_Window* window = SDL_CreateWindow(
@@ -48,18 +98,34 @@ int main(int, char**) {
 
     std::cout << "[startup] OpenGL context created" << std::endl;
 
+    if (SDL_GL_MakeCurrent(window, gl_context) != 0) {
+        std::cerr << "[error] SDL_GL_MakeCurrent failed: " << SDL_GetError() << std::endl;
+        SDL_GL_DeleteContext(gl_context);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+    int context_major = 0;
+    int context_minor = 0;
+    int context_profile = 0;
+    SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &context_major);
+    SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &context_minor);
+    SDL_GL_GetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, &context_profile);
+    std::cout << "[startup] Active OpenGL context: " << context_major << "." << context_minor
+              << " profile mask=" << context_profile << std::endl;
+
     if (SDL_GL_SetSwapInterval(1) != 0) {
         std::cerr << "[warn] VSync request failed: " << SDL_GetError() << std::endl;
     } else {
         std::cout << "[startup] VSync enabled" << std::endl;
     }
 
-    const GLubyte* version = glGetString(GL_VERSION);
-    if (version) {
-        std::cout << "[startup] OpenGL version: " << version << std::endl;
-    } else {
-        std::cout << "[warn] OpenGL version string unavailable" << std::endl;
-    }
+    log_gl_string("OpenGL vendor", GL_VENDOR);
+    log_gl_string("OpenGL renderer", GL_RENDERER);
+    log_gl_string("OpenGL version", GL_VERSION);
+
+    apply_viewport(window, true);
 
     std::cout << "[runtime] Entering main loop" << std::endl;
 
@@ -77,8 +143,9 @@ int main(int, char**) {
                 std::cout << "[event] Window close requested" << std::endl;
                 running = false;
             } else if (event.type == SDL_WINDOWEVENT) {
-                if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                if (event.window.event == SDL_WINDOWEVENT_RESIZED || event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                     std::cout << "[event] Window resized to " << event.window.data1 << "x" << event.window.data2 << std::endl;
+                    apply_viewport(window, true);
                 } else if (event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
                     std::cout << "[event] Window focus gained" << std::endl;
                 } else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
@@ -111,11 +178,6 @@ int main(int, char**) {
         const double delta_time = static_cast<double>(now_counter - previous_counter) / static_cast<double>(frequency);
         previous_counter = now_counter;
 
-        int drawable_width = 0;
-        int drawable_height = 0;
-        SDL_GL_GetDrawableSize(window, &drawable_width, &drawable_height);
-
-        glViewport(0, 0, drawable_width, drawable_height);
         glClearColor(0.10f, 0.18f, 0.32f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
