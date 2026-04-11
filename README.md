@@ -1,220 +1,246 @@
-# Weekend Empire - Milestone 6 Early Chairman Agency Prototype
+# Weekend Empire - Milestone 7 Season Loop, News Feed, and Context Pipeline
 
 Weekend Empire is a Linux-first C++20 football chairman simulator prototype built with SDL2, OpenGL, Dear ImGui, and SQLite.
 
-This milestone moves the game from a passive simulation dashboard into a small but coherent chairman sandbox with meaningful decisions, league identity, board pressure, and supporter reaction context.
+Milestone 7 restructures the simulation into a clear season lifecycle with a practical world feed and a more grounded chairman-event pipeline.
 
-## What changed in this milestone
+## 1) What changed in this milestone
 
-- Added a chairman decision/event layer with actionable choices and state consequences.
-- Expanded the world to a 10-club league with identity fields (strength, reputation, supporter expectation, fanbase).
-- Added rivalry links used by derby context and sentiment swings.
-- Added visible league table standings derived from played fixtures.
-- Added clearer finance categories and a richer finance ledger panel.
-- Added explicit board objectives tied to table position, rival performance, form, wages, and balance floor.
-- Added supporter reaction logging and daily supporter context updates.
-- Extended SQLite schema for events, objectives, rivalry links, and supporter notes.
+- Added an explicit season model in `game_state` with:
+  - current season year
+  - season start date
+  - season end date
+  - season phase
+  - season summary pending flag
+- Linked fixtures, board objectives, and chairman events to a specific season.
+- Added a `season_summaries` table and end-of-season summary generation.
+- Added a persistent `feed_items` table and a visible News Feed panel in ImGui.
+- Reworked progression into a clearer daily pipeline:
+  - apply daily finance
+  - process fixtures
+  - evaluate board objectives
+  - generate context-aware events
+  - detect season end and create summary
+- Added clean season rollover flow with an explicit acknowledgement button.
 
-## New systems in this milestone
+## 2) How season structure now works
 
-## 1) Decision/Event Layer
+Each season is represented as a start-year label, for example `2026/27`.
 
-Active chairman events now appear in a dedicated decision panel.
+- Start date: `YYYY-07-01`
+- End date: `YYYY+1-05-31`
+- Fixture cadence: weekly Saturday fixture days for league rounds
 
-Each event provides 2-3 choices, and each choice has explicit outcome effects shown before you click:
+Phase values are intentionally simple:
 
-- balance delta
-- board confidence delta
-- supporter mood delta
-- reputation delta
+- `preseason`
+- `opening`
+- `regular`
+- `run-in`
+- `summary`
 
-Event themes are grounded in chairman duties:
+The UI always shows date, season label, and current phase.
 
-- sponsor offers
-- ticket pressure
-- board discipline requests
-- supporter complaints
-- staffing choices
-- stadium maintenance
-- derby security bills
-- facility upgrades
-- community outreach
-- emergency maintenance issues
+## 3) Season start and end handling
 
-Events are persisted in SQLite (`chairman_events`) and include chosen option tracking.
+### Season start
 
-## 2) Club Identity + League Context
+On first launch (or after reset), season `2026/27` is initialized.
 
-The seeded league now contains 10 clubs with distinct attributes:
+- Fixtures are generated for that season if absent.
+- Board objectives are seeded for that season if absent.
+- Feed gets season framing messages as progression begins.
 
-- name
-- strength
+### Season end
+
+Season end is detected when both are true:
+
+- current date is at or beyond season end date
+- no unplayed fixtures remain for the current season
+
+When triggered:
+
+- season summary row is created in SQLite
+- season summary popup becomes pending in UI
+- feed records the completed season line
+
+## 4) Season rollover behavior
+
+Rollover is explicit, not automatic drift:
+
+1. Season summary popup appears.
+2. Player clicks `Acknowledge and Start Next Season`.
+3. Game transitions to next season start date.
+4. Next season fixtures are generated.
+5. Next season board objectives are seeded.
+6. Old unresolved events are closed.
+7. Feed records the new season kickoff.
+
+Continuity preserved:
+
+- balance
+- board confidence
+- supporter mood
 - reputation
-- supporter expectation
-- fanbase indicator
 
-A rivalry table (`club_rivalries`) creates derby context.
+Reset/regenerated season elements:
 
-Fixtures are seeded for a compact home/away league schedule.
+- fixtures
+- standings view (implicitly from new-season fixtures/results)
+- season board objectives
+- season framing in feed
 
-Standings are computed from persisted results and shown as:
+## 5) Season summary contents
 
-- position
-- points
-- goal difference
+The summary stores and displays:
 
-This gives match outcomes immediate league meaning.
+- final league position
+- points total
+- wins / draws / losses
+- ending balance
+- board confidence
+- supporter mood
+- board objectives met vs total
 
-## 3) Finance Breakdown
+Stored in `season_summaries` and shown in an ImGui modal.
 
-Balance movement is now categorized and visible:
+## 6) News/feed panel
 
-- `matchday_income`
-- `wages`
-- `upkeep`
-- `one_off`
-- `board_related`
+A persistent text feed is now part of the UI.
 
-Each finance entry stores:
+Feed captures grounded chairman-facing updates such as:
+
+- fixture-day announcements
+- match results
+- metric reactions to results/finances/objective drift
+- event generation notices
+- finance warning messages
+- season run-in and season transition messages
+
+Feed entries are persisted in `feed_items` with:
 
 - date
+- season
+- club id
 - category
-- amount
-- balance-after snapshot
-- description
+- content
 
-The finance panel answers “why did my balance move?” without deep accounting complexity.
+## 7) Improved event pipeline
 
-## 4) Board Objectives
+The event layer remains lightweight but now uses context triggers.
 
-Board objectives are persisted and visible at all times.
+Potential trigger sources:
 
-Current objective types:
+- low balance
+- poor recent form
+- low supporter mood
+- board confidence pressure
+- table position relative to expectation
+- scheduled weekday windows when no pressure trigger exists
 
-- finish in top half
-- finish above named rival
-- keep balance above floor
-- keep wage bill under cap
-- avoid poor recent form
+Pipeline per day:
 
-Objectives are evaluated daily and update objective status/progress text.
+1. Simulation step (advance date)
+2. Apply state changes (finance + fixtures)
+3. Evaluate derived consequences (board objective drift)
+4. Write feed reactions
+5. Generate actionable event when triggers match
+6. Refresh UI data
 
-Board confidence shifts as objective states improve or worsen.
+Not every feed item is actionable. Actionable chairman decisions and informational world updates are separate but connected.
 
-## 5) Supporter Reaction System
+## 8) What is still intentionally simplified
 
-Supporter mood now reacts to multiple contexts:
+Still intentionally excluded:
 
-- rivalry match outcomes
-- form over last 5 games
-- table position vs expectation
-- selected chairman event choices
-- financial stress context
-
-Supporter notes are logged (`supporter_log`) and shown in the UI so changes are understandable.
-
-## What remains intentionally simplified
-
-This is still a deliberately small prototype, not a full management game.
-
-Still excluded on purpose:
-
-- player database
-- transfer market
-- tactical simulation depth
-- staffing trees
-- training systems
-- media systems
-- cups
+- player-level management
+- training plans
+- tactical control
+- transfer market detail
+- dressing room systems
+- media simulation depth
 - networking/audio
 
-The simulation remains readable and inspectable, with compact interacting systems.
+This remains a chairman-level executive simulator prototype.
 
-## How the systems interact
-
-- Day advance applies wages and upkeep costs.
-- Fixture days simulate matches and update results.
-- Results feed standings and drive match consequences.
-- Board objective checks update confidence pressure.
-- Supporter context check updates supporter mood.
-- Decision events create direct chairman agency.
-- All key effects persist in SQLite and appear in UI panels.
-
-## UI now shows
+## 9) UI now shows
 
 - current date
-- club summary
-- league table
-- board objectives + progress
-- active decision/event panel with choice buttons
+- current season label
+- season start/end dates
+- season phase
+- club summary metrics
+- standings table
 - upcoming fixtures
 - recent results
-- recent finance ledger entries
-- supporter reaction notes
-- controls:
-  - Advance Day
-  - Advance 7 Days
-  - Refresh
+- current board objectives
+- active actionable event with choices
+- recent finance entries
+- persistent news/feed panel
+- season summary popup when season concludes
 
-## Linux dependencies (Ubuntu/Debian)
+Controls:
+
+- `Advance Day`
+- `Advance 7 Days`
+- `Refresh`
+- actionable event response buttons
+- season summary acknowledgement button
+
+## 10) Build instructions (Linux)
+
+From repository root:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j
+```
+
+## 11) Run instructions
+
+```bash
+./build/weekend_empire
+```
+
+## 12) Required Linux dependencies (Ubuntu/Debian)
 
 ```bash
 sudo apt update
 sudo apt install -y build-essential cmake libsdl2-dev libgl1-mesa-dev libsqlite3-dev
 ```
 
-Optional diagnostics tools:
+Optional diagnostics:
 
 ```bash
 sudo apt install -y sqlite3 gdb valgrind mesa-utils
 ```
 
-## Build instructions
+## 13) Expected runtime behavior
 
-From repository root:
+Startup logs include:
 
-1) Configure
-
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-```
-
-2) Build
-
-```bash
-cmake --build build -j
-```
-
-## Run instructions
-
-```bash
-./build/weekend_empire
-```
-
-## Expected runtime behaviour
-
-On startup you should see logs for:
-
-- startup
+- SDL/OpenGL startup details
+- DB initialization
 - schema verification/upgrades
-- seed verification
-- fixture/world generation when DB is empty
+- season fixture generation when required
+- seasonal objective seeding when required
 
-During simulation you should see logs for:
+Runtime logs include:
 
-- day advancement
-- fixture simulation
-- finance changes
-- board objective checks
-- supporter context updates
-- event generation
-- event choices
+- daily advancement
+- fixture processing
+- feed item creation
+- board objective updates
+- event generation and resolution
+- season end detection
+- season summary creation
+- season transition
 
-On shutdown you should see cleanup logs.
+Shutdown logs include cleanup.
 
-## Debugging / common failures
+## 14) Debugging steps and common failures
 
-### 1) Clean rebuild
+### Clean rebuild
 
 ```bash
 rm -rf build
@@ -222,66 +248,63 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j
 ```
 
-### 2) Verify schema tables
+### Verify schema tables
 
 ```bash
 sqlite3 weekend_empire.db ".tables"
 ```
 
-Expected milestone tables include:
+Look for:
 
-- leagues
-- clubs
-- game_state
-- fixtures
-- finance_events
-- board_objectives
-- chairman_events
-- supporter_log
-- club_rivalries
+- `game_state`
+- `fixtures`
+- `board_objectives`
+- `chairman_events`
+- `finance_events`
+- `feed_items`
+- `season_summaries`
 
-### 3) Quick data checks
+### Inspect season state
 
 ```bash
-sqlite3 weekend_empire.db "SELECT id,current_date,selected_club_id FROM game_state;"
-sqlite3 weekend_empire.db "SELECT id,name,balance,board_confidence,supporter_mood,reputation,supporter_expectation FROM clubs ORDER BY id;"
-sqlite3 weekend_empire.db "SELECT id,event_date,event_key,resolved,chosen_option FROM chairman_events ORDER BY id DESC LIMIT 10;"
-sqlite3 weekend_empire.db "SELECT id,event_date,category,amount,balance_after,description FROM finance_events ORDER BY id DESC LIMIT 20;"
-sqlite3 weekend_empire.db "SELECT id,note_date,reason,delta,mood_after FROM supporter_log ORDER BY id DESC LIMIT 20;"
+sqlite3 weekend_empire.db "SELECT id,current_date,current_season,season_start_date,season_end_date,season_phase,season_summary_pending FROM game_state;"
+sqlite3 weekend_empire.db "SELECT season_year,COUNT(*) FROM fixtures GROUP BY season_year ORDER BY season_year;"
+sqlite3 weekend_empire.db "SELECT season_year,summary_date,final_position,points,objectives_met,objectives_total FROM season_summaries ORDER BY season_year DESC;"
+sqlite3 weekend_empire.db "SELECT id,item_date,season_year,category,content FROM feed_items ORDER BY id DESC LIMIT 20;"
 ```
 
-### 4) OpenGL diagnostics
+### OpenGL diagnostics
 
 ```bash
 glxinfo | head -n 20
 ```
 
-### 5) Runtime debugging
+### Runtime debugging
 
 ```bash
 gdb --args ./build/weekend_empire
 valgrind ./build/weekend_empire
 ```
 
-## Resetting the simulation state
+## 15) Resetting the database / starting fresh
 
-To reset to a fresh seeded world:
+To reset to a clean sample world:
 
 ```bash
 rm -f weekend_empire.db
 ./build/weekend_empire
 ```
 
-The app recreates schema and seeds the sample world on next launch.
+On next launch, schema and initial season seed data are recreated automatically.
 
-## What this milestone proves
+## 16) What this milestone proves for Weekend Empire
 
-Milestone 6 proves Weekend Empire can support coherent chairman gameplay loops:
+Milestone 7 proves the foundation can support coherent multi-season chairman play without heavy architecture:
 
-- the player receives grounded decisions with meaningful consequences
-- league context and rivalries make results matter
-- finances are legible and attributed
-- board expectations are explicit and evaluated
-- supporters react to both football outcomes and chairman choices
+- explicit season lifecycle
+- deterministic, readable fixture cadence
+- practical season close + rollover
+- persistent reactive feed
+- context-sensitive but compact event generation
 
-This establishes a practical foundation for future milestones without introducing heavyweight architecture.
+This gives a stronger simulation backbone while keeping scope firmly in chairman reality.
