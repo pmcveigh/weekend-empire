@@ -36,7 +36,7 @@ target_include_directories(imgui_lib PUBLIC
     ${imgui_SOURCE_DIR}/misc/gl3w
 )
 
-target_compile_definitions(imgui_lib PUBLIC IMGUI_IMPL_OPENGL_LOADER_GL3W)
+target_compile_definitions(imgui_lib PUBLIC IMGUI_IMPL_OPENGL_LOADER_CUSTOM)
 
 target_link_libraries(imgui_lib PUBLIC SDL2::SDL2 OpenGL::GL)
 
