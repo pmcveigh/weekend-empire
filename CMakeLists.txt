@@ -34,7 +34,15 @@ target_include_directories(imgui_lib PUBLIC
     ${imgui_SOURCE_DIR}/backends
 )
 
-target_compile_definitions(imgui_lib PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLAD)
+target_compile_definitions(imgui_lib PUBLIC
+    IMGUI_IMPL_OPENGL_LOADER_CUSTOM
+    GL_GLEXT_PROTOTYPES
+)
+
+target_compile_options(imgui_lib PRIVATE
+    -include
+    SDL2/SDL_opengl.h
+)
 
 target_link_libraries(imgui_lib PUBLIC SDL2::SDL2 OpenGL::GL)
 
