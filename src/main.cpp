@@ -3,8 +3,6 @@
 
 #include <sqlite3.h>
 
-#include <glad/glad.h>
-
 #include <imgui.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <backends/imgui_impl_sdl2.h>
@@ -204,14 +202,6 @@ int main(int, char**) {
 
     if (SDL_GL_MakeCurrent(window, gl_context) != 0) {
         std::cerr << "[error] SDL_GL_MakeCurrent failed: " << SDL_GetError() << std::endl;
-        SDL_GL_DeleteContext(gl_context);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-
-    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(SDL_GL_GetProcAddress))) {
-        std::cerr << "[error] gladLoadGLLoader failed" << std::endl;
         SDL_GL_DeleteContext(gl_context);
         SDL_DestroyWindow(window);
         SDL_Quit();
